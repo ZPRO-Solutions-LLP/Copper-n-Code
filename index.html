@@ -1,0 +1,1046 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive progress preview: Factory Automation for statue manufacturing. Knowledge base, Project A observation platform, Project B training data.">
+<meta name="theme-color" content="#120e0c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23d0834f'/%3E%3C/svg%3E">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Copper &amp; Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a night-time foundry gallery. Three spot-lit plinths (the story), a stage line (the craft),
+   a tool bench (the stack), a roadmap. Each plinth opens a full-screen chamber that is cast open from the click point. */
+:root{
+  --night:#120e0c;      /* foundry at night */
+  --soot:#1b1512;       /* raised surfaces */
+  --slab:#2a211c;       /* plinth stone, borders */
+  --plaster:#ece4d8;    /* POP white: primary text */
+  --dust:#a9998a;       /* secondary text */
+  --copper:#d0834f;     /* the finish coat: accent */
+  --molten:#ffb46e;     /* hot highlight */
+  --patina:#63cbb6;     /* camera / observation (Project A only) */
+  --seal:#e56b5a;       /* conflicts, rejects */
+  --line:rgba(236,228,216,.12);
+  --line-strong:rgba(236,228,216,.22);
+  --f-display:"Big Shoulders Display","Oswald","Arial Narrow",Impact,sans-serif;
+  --f-body:"Hanken Grotesk","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--night);color:var(--plaster);font-family:var(--f-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body.locked{overflow:hidden}
+img{max-width:100%;display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--molten);outline-offset:3px;border-radius:4px}
+.mono{font-family:var(--f-mono);font-size:.8em;letter-spacing:.02em}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--copper)}
+h1,h2,h3,h4{font-family:var(--f-display);font-weight:800;letter-spacing:.01em;line-height:.95;margin:0;text-wrap:balance}
+p{margin:0}
+.wrap{width:min(1200px,100%);margin-inline:auto;padding-inline:clamp(16px,4vw,40px)}
+
+/* ---------- casting intro ---------- */
+.pour{position:fixed;inset:0;z-index:100;background:var(--night);display:grid;place-items:center;transition:clip-path 1s var(--ease),opacity .4s;clip-path:inset(0 0 0 0)}
+.pour.gone{clip-path:inset(0 0 100% 0);pointer-events:none}
+.pour-stage{position:relative;width:min(260px,60vw);aspect-ratio:535/845}
+.pour-mold{position:absolute;inset:0;-webkit-mask:url(assets/statue-foundation.webp) center/contain no-repeat;mask:url(assets/statue-foundation.webp) center/contain no-repeat;background:linear-gradient(to top,var(--molten) 0 var(--fill,0%),rgba(236,228,216,.07) var(--fill,0%));filter:drop-shadow(0 0 30px rgba(255,160,90,.35))}
+.pour-mold::after{content:"";position:absolute;inset:0}
+.pour-stream{position:absolute;left:50%;top:-42vh;width:6px;margin-left:-3px;height:calc(42vh + 8%);background:linear-gradient(var(--molten),#ff8a3c);border-radius:3px;box-shadow:0 0 18px #ff9a4d;transform-origin:top;animation:stream 2.1s var(--ease) forwards}
+@keyframes stream{0%{transform:scaleY(0)}18%{transform:scaleY(1)}82%{transform:scaleY(1);opacity:1}100%{transform:scaleY(1);opacity:0}}
+.pour-copy{position:absolute;left:0;right:0;bottom:clamp(24px,8vh,80px);text-align:center;display:grid;gap:8px;padding-inline:16px}
+.pour-copy h2{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.pour-skip{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:16px;font-family:var(--f-mono);font-size:.75rem;color:var(--dust);border:1px solid var(--line-strong);padding:6px 12px;border-radius:99px}
+.pour-skip:hover{color:var(--plaster);border-color:var(--copper)}
+
+/* ---------- top bar ---------- */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:40;padding:calc(12px + env(safe-area-inset-top,0px)) clamp(16px,4vw,40px) 12px;display:flex;align-items:center;justify-content:space-between;gap:16px;pointer-events:none}
+.topbar>*{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-size:1.25rem;letter-spacing:.06em;text-transform:uppercase}
+.brand-mark{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--molten),var(--copper) 55%,#7a4222);box-shadow:0 0 16px rgba(255,160,90,.45)}
+.progress{display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:.72rem;color:var(--dust);background:rgba(18,14,12,.7);backdrop-filter:blur(8px);border:1px solid var(--line);padding:6px 12px;border-radius:99px}
+.progress-dots{display:flex;gap:6px}
+.progress-dots i{width:9px;height:9px;border-radius:50%;border:1px solid var(--copper);transition:background .4s,box-shadow .4s}
+.progress-dots i.on{background:var(--copper);box-shadow:0 0 10px var(--copper)}
+
+/* ---------- the hall ---------- */
+.hall{position:relative;min-height:clamp(700px,100svh,1000px);overflow:hidden;isolation:isolate;padding-top:calc(76px + env(safe-area-inset-top,0px));display:flex;flex-direction:column}
+.hall-bg{position:absolute;inset:0;z-index:-2;background:
+  radial-gradient(60% 50% at var(--px,50%) var(--py,30%),rgba(208,131,79,.13),transparent 70%),
+  radial-gradient(120% 70% at 50% 110%,#2a1c14 0%,transparent 60%),
+  var(--night)}
+.floor{position:absolute;left:-20%;right:-20%;bottom:-10%;height:46%;z-index:-1;transform:perspective(600px) rotateX(62deg);transform-origin:bottom;background:
+  repeating-linear-gradient(90deg,rgba(208,131,79,.13) 0 1px,transparent 1px 80px),
+  repeating-linear-gradient(0deg,rgba(208,131,79,.13) 0 1px,transparent 1px 80px);
+  -webkit-mask:linear-gradient(to top,#000 10%,transparent 90%);mask:linear-gradient(to top,#000 10%,transparent 90%);animation:floorDrift 18s linear infinite}
+@keyframes floorDrift{to{background-position:0 80px,0 80px}}
+#embers{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.hall-intro{display:grid;gap:14px;max-width:760px}
+.hall-intro h1{font-size:clamp(2.4rem,5.4vw,4.6rem);text-transform:uppercase;letter-spacing:.005em}
+.hall-intro h1 em{font-style:normal;color:transparent;-webkit-text-stroke:1.5px var(--copper);background:linear-gradient(100deg,transparent 30%,rgba(255,180,110,.9) 50%,transparent 70%) 200% 0/250% 100% no-repeat;-webkit-background-clip:text;background-clip:text;animation:shine 5s 2.8s ease-in-out infinite}
+@keyframes shine{0%{background-position:200% 0}40%,100%{background-position:-60% 0}}
+.hall-intro p{color:var(--dust);font-size:clamp(1rem,1.6vw,1.15rem);max-width:60ch}
+.hall-intro p b{color:var(--plaster);font-weight:600}
+
+.exhibits{flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:clamp(12px,3vw,48px);padding-block:24px 28px;perspective:1200px}
+.exhibit{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;--tilt:0deg;--lift:0px}
+.beam{position:absolute;left:50%;bottom:120px;width:min(320px,90%);height:130%;transform:translateX(-50%);clip-path:polygon(44% 0,56% 0,100% 100%,0 100%);background:linear-gradient(to bottom,rgba(255,200,150,.0),rgba(255,190,130,.16) 40%,rgba(255,170,110,.22));filter:blur(6px);opacity:.55;transition:opacity .6s,filter .6s;pointer-events:none}
+.exhibit:hover .beam,.exhibit:focus-visible .beam{opacity:1;filter:blur(3px)}
+.figure{position:relative;height:var(--h,320px);display:flex;align-items:flex-end;justify-content:center;transform:translateY(var(--lift)) rotateY(var(--tilt));transform-style:preserve-3d;transition:transform .5s var(--ease);animation:float 6s ease-in-out infinite;animation-delay:var(--d,0s)}
+@keyframes float{50%{translate:0 -8px}}
+.figure img.statue{height:100%;width:auto;object-fit:contain;filter:drop-shadow(0 18px 24px rgba(0,0,0,.7)) brightness(.92);transition:filter .5s}
+.exhibit:hover img.statue,.exhibit:focus-visible img.statue{filter:drop-shadow(0 18px 24px rgba(0,0,0,.7)) drop-shadow(0 0 28px rgba(255,150,80,.35)) brightness(1.08)}
+.sheen{position:absolute;inset:0;-webkit-mask:var(--m) bottom center/contain no-repeat;mask:var(--m) bottom center/contain no-repeat;background:linear-gradient(105deg,transparent 35%,rgba(255,225,190,.55) 50%,transparent 65%) -150% 0/300% 100% no-repeat;mix-blend-mode:screen;pointer-events:none}
+.exhibit:hover .sheen,.exhibit:focus-visible .sheen{animation:sheen 1.4s var(--ease)}
+@keyframes sheen{to{background-position:150% 0}}
+/* per-statue hover stories */
+.ghost{position:absolute;bottom:4%;left:50%;height:92%;width:auto;max-width:none;transform:translateX(-50%) scale(.9);opacity:0;transition:opacity .7s,transform .9s var(--ease);z-index:-1;filter:drop-shadow(0 0 12px rgba(255,160,90,.5))}
+.exhibit:hover .ghost,.exhibit:focus-visible .ghost{opacity:.85;transform:translateX(-78%) translateY(-6%) scale(1.02)}
+.viewfinder{position:absolute;inset:-8% -14%;opacity:0;transition:opacity .4s;pointer-events:none;font-family:var(--f-mono);font-size:.62rem;color:var(--patina);text-align:left}
+.viewfinder::before,.viewfinder::after{content:"";position:absolute;inset:0;border:1.5px solid var(--patina);-webkit-mask:conic-gradient(from 90deg at 18px 18px,#0000 25%,#000 0) 0 0/calc(100% - 18px) calc(100% - 18px);mask:conic-gradient(from 90deg at 18px 18px,#0000 25%,#000 0) 0 0/calc(100% - 18px) calc(100% - 18px)}
+.viewfinder::after{border:0;inset:0;background:linear-gradient(to bottom,transparent,rgba(99,203,182,.25),transparent) 0 -100%/100% 30% no-repeat;-webkit-mask:none;mask:none}
+.exhibit:hover .viewfinder,.exhibit:focus-visible .viewfinder{opacity:1}
+.exhibit:hover .viewfinder::after{animation:scan 1.6s linear infinite}
+@keyframes scan{to{background-position:0 250%}}
+.viewfinder span{position:absolute;padding:2px 6px;background:rgba(18,14,12,.75)}
+.vf-rec{top:6px;left:8px}.vf-rec b{color:var(--seal);animation:blink 1s steps(1) infinite}
+.vf-tag{bottom:6px;right:8px}
+@keyframes blink{50%{opacity:0}}
+.tags{position:absolute;inset:0;pointer-events:none}
+.tags span{position:absolute;font-family:var(--f-mono);font-size:.62rem;background:rgba(18,14,12,.85);border:1px solid var(--copper);color:var(--plaster);padding:3px 7px;border-radius:4px;white-space:nowrap;opacity:0;transform:translateY(10px) scale(.9);transition:all .5s var(--ease)}
+.tags span::before{content:"✓ ";color:var(--molten)}
+.exhibit:hover .tags span,.exhibit:focus-visible .tags span{opacity:1;transform:none}
+.exhibit:hover .tags span:nth-child(2){transition-delay:.12s}.exhibit:hover .tags span:nth-child(3){transition-delay:.24s}
+
+.plinth{position:relative;margin-top:-4px;width:min(300px,100%);padding:20px 18px 18px;background:
+  linear-gradient(180deg,#3a2e27,#231b17 60%,#1a1411);border:1px solid var(--line);border-top-color:rgba(255,200,160,.25);border-radius:3px;box-shadow:0 30px 50px -20px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,220,190,.12);display:grid;gap:6px;justify-items:center}
+.plinth::before{content:"";position:absolute;left:-6%;right:-6%;top:-10px;height:12px;background:linear-gradient(#4a3a31,#2d231e);border-radius:2px;box-shadow:0 4px 10px rgba(0,0,0,.6)}
+.numeral{font-family:var(--f-display);font-weight:500;font-size:.85rem;letter-spacing:.3em;color:var(--copper)}
+.plinth h2{font-size:clamp(1.4rem,2.4vw,2rem);text-transform:uppercase;letter-spacing:.04em}
+.plinth p{font-size:.85rem;color:var(--dust);line-height:1.4}
+.enter{margin-top:6px;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--molten);display:inline-flex;gap:8px;align-items:center}
+.enter i{display:inline-block;transition:transform .4s var(--ease)}
+.exhibit:hover .enter i{transform:translateX(6px)}
+.exhibit.seen .numeral::after{content:" · visited";letter-spacing:.1em;color:var(--dust)}
+.hint{text-align:center;font-family:var(--f-mono);font-size:.72rem;color:var(--dust);padding-bottom:24px;letter-spacing:.1em}
+.hint b{color:var(--molten);font-weight:500}
+
+/* ---------- sections below the hall ---------- */
+.band{padding-block:clamp(56px,9vw,110px);border-top:1px solid var(--line);position:relative}
+.band-head{display:grid;gap:12px;margin-bottom:32px;max-width:760px}
+.band-head h2{font-size:clamp(2rem,5vw,3.6rem);text-transform:uppercase}
+.band-head p{color:var(--dust);max-width:62ch}
+
+/* stage line */
+.line-track{position:relative;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px;padding-top:40px}
+.line-track::before{content:"";position:absolute;left:0;right:0;top:18px;height:4px;border-radius:2px;background:repeating-linear-gradient(90deg,var(--slab) 0 14px,#3a2e27 14px 16px);animation:belt 1.2s linear infinite}
+@keyframes belt{to{background-position:16px 0}}
+.cast-token{position:absolute;top:6px;left:0;width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3e0,var(--molten) 30%,var(--copper) 70%);box-shadow:0 0 18px var(--molten);transition:left .8s var(--ease),background .6s;z-index:2}
+.stage{display:grid;gap:6px;text-align:left;padding:12px 10px;border:1px solid var(--line);border-radius:6px;background:var(--soot);min-width:0;transition:border-color .3s,background .3s,transform .3s var(--ease)}
+.stage:hover{transform:translateY(-3px);border-color:var(--line-strong)}
+.stage[aria-pressed="true"]{border-color:var(--copper);background:#241b16}
+.stage .mono{color:var(--copper)}
+.stage b{font-family:var(--f-display);font-weight:700;font-size:1.05rem;letter-spacing:.03em;line-height:1.05;text-transform:uppercase}
+.stage-detail{margin-top:18px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:24px;padding:24px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(135deg,rgba(208,131,79,.08),transparent 60%)}
+.stage-detail h3{font-size:1.9rem;text-transform:uppercase;margin-bottom:8px}
+.stage-detail p{color:var(--dust)}
+.stage-detail ul{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:4px}
+.stage-detail li{font-size:.92rem}
+.stage-detail li::before{content:"— ";color:var(--copper)}
+.kicker{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dust)}
+
+/* tool bench */
+.bench{position:relative;min-height:420px;border-radius:10px;overflow:hidden;background:
+  radial-gradient(70% 90% at 50% 0%,rgba(255,190,130,.10),transparent 70%),
+  repeating-linear-gradient(92deg,rgba(0,0,0,.18) 0 2px,transparent 2px 9px),
+  linear-gradient(180deg,#3b2a1f,#2a1d15);border:1px solid var(--line);box-shadow:inset 0 30px 60px -30px rgba(0,0,0,.8)}
+.tool{position:absolute;left:var(--x);top:var(--y);width:var(--w);transform:rotate(var(--r));transition:transform .45s var(--ease),filter .45s;filter:drop-shadow(6px 10px 8px rgba(0,0,0,.6))}
+.tool img{width:100%;height:auto;pointer-events:none}
+.tool:hover,.tool:focus-visible,.tool[aria-expanded="true"]{transform:rotate(calc(var(--r) * .3)) translateY(-10px) scale(1.06);filter:drop-shadow(10px 22px 14px rgba(0,0,0,.6)) drop-shadow(0 0 16px rgba(255,160,90,.35));z-index:3}
+.tool .pip{position:absolute;right:-6px;top:-6px;width:12px;height:12px;border-radius:50%;background:var(--molten);box-shadow:0 0 0 0 rgba(255,180,110,.7);animation:pip 2s infinite}
+@keyframes pip{70%{box-shadow:0 0 0 12px rgba(255,180,110,0)}100%{box-shadow:0 0 0 0 rgba(255,180,110,0)}}
+.tag-card{position:absolute;z-index:5;width:min(340px,calc(100% - 32px));padding:18px 18px 16px 30px;background:#efe6d8;color:#231a14;border-radius:4px 10px 10px 4px;box-shadow:0 20px 40px rgba(0,0,0,.55);transform-origin:top left;animation:tagIn .45s var(--ease)}
+.tag-card::before{content:"";position:absolute;left:10px;top:18px;width:9px;height:9px;border-radius:50%;background:#231a14;box-shadow:inset 0 0 0 2px #efe6d8,0 0 0 1px #8a7a6a}
+.tag-card .mono{color:#8a4f2a}
+.tag-card h4{font-size:1.5rem;text-transform:uppercase;margin:4px 0 8px;color:#1b130e}
+.tag-card p{font-size:.92rem;line-height:1.45;color:#3a2e26}
+.tag-card .stack{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.tag-card .stack span{font-family:var(--f-mono);font-size:.68rem;padding:2px 7px;border:1px solid #b89a82;border-radius:99px;color:#5b3a22}
+.tag-close{position:absolute;right:8px;top:6px;font-size:1.1rem;color:#6a5a4c;width:28px;height:28px}
+@keyframes tagIn{from{opacity:0;transform:rotate(-6deg) scale(.85)}}
+.bench-note{position:absolute;left:16px;bottom:12px;font-family:var(--f-mono);font-size:.66rem;color:rgba(236,228,216,.55)}
+
+/* roadmap */
+.phases{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;margin-top:8px}
+.phase{position:relative;padding:14px 10px 16px;border-top:3px solid var(--slab);display:grid;gap:6px;align-content:start;min-width:0}
+.phase[data-s="done"]{border-top-color:var(--copper)}
+.phase[data-s="now"]{border-top-color:var(--molten)}
+.phase[data-s="now"]::before{content:"";position:absolute;top:-8px;left:10px;width:13px;height:13px;border-radius:50%;background:var(--molten);box-shadow:0 0 0 0 rgba(255,180,110,.7);animation:pip 2s infinite}
+.phase .mono{color:var(--dust)}
+.phase b{overflow-wrap:anywhere;font-family:var(--f-display);font-weight:700;font-size:.95rem;text-transform:uppercase;letter-spacing:.02em;line-height:1.05}
+.phase p{font-size:.8rem;color:var(--dust);line-height:1.35}
+.phase .st{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase}
+.phase[data-s="done"] .st{color:var(--copper)}.phase[data-s="now"] .st{color:var(--molten)}.phase[data-s="later"] .st{color:rgba(169,153,138,.6)}
+.asks{margin-top:48px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ask{background:var(--night);padding:22px;display:grid;gap:8px;align-content:start;min-width:0}
+.ask .mono{color:var(--copper)}
+.ask h4{font-size:1.35rem;text-transform:uppercase;letter-spacing:.02em}
+.ask p{color:var(--dust);font-size:.92rem}
+footer{border-top:1px solid var(--line);padding-block:36px calc(36px + env(safe-area-inset-bottom,0px));color:var(--dust);font-size:.85rem}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px}
+
+/* ---------- chambers ---------- */
+.chamber{position:fixed;inset:0;z-index:60;background:var(--night);overflow-y:auto;overscroll-behavior:contain;clip-path:circle(0 at var(--cx,50%) var(--cy,50%));transition:clip-path .9s var(--ease);visibility:hidden}
+.chamber.open{clip-path:circle(150% at var(--cx,50%) var(--cy,50%));visibility:visible}
+.chamber.closing{transition-duration:.6s}
+.ch-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) clamp(16px,4vw,40px) 12px;background:linear-gradient(var(--night) 60%,transparent)}
+.ch-bar .who{display:flex;align-items:baseline;gap:12px;min-width:0}
+.ch-bar .who b{font-family:var(--f-display);font-size:1.3rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.ch-nav{display:flex;gap:8px}
+.ch-nav button{font-family:var(--f-mono);font-size:.72rem;border:1px solid var(--line-strong);padding:7px 12px;border-radius:99px;color:var(--dust);transition:all .25s;white-space:nowrap}
+.ch-nav button:hover{color:var(--plaster);border-color:var(--copper)}
+.ch-nav .close{color:var(--night);background:var(--plaster);border-color:var(--plaster)}
+.ch-nav .close:hover{background:var(--molten);border-color:var(--molten);color:var(--night)}
+.ch-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.6fr);gap:clamp(24px,5vw,72px);padding-block:12px 80px}
+.ch-side{position:sticky;top:70px;align-self:start;display:grid;gap:18px;justify-items:center;padding-top:20px}
+.ch-side .figure{--h:min(62vh,520px);animation:none}
+.ch-side .beam{bottom:0;height:115%;opacity:.8}
+.ch-side .caption{font-family:var(--f-mono);font-size:.7rem;color:var(--dust);text-align:center;max-width:32ch}
+.ch-main{display:grid;gap:clamp(40px,6vw,64px);min-width:0}
+.ch-title{display:grid;gap:14px}
+.ch-title h2{font-size:clamp(2.8rem,7vw,5.6rem);text-transform:uppercase}
+.ch-title h2 small{display:block;font-size:.34em;letter-spacing:.14em;color:var(--copper);font-weight:600;margin-bottom:10px}
+.lede{font-size:clamp(1.12rem,1.9vw,1.4rem);line-height:1.45;max-width:58ch;color:var(--plaster)}
+.lede em{font-style:normal;color:var(--molten)}
+.plain{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start;padding:16px 18px;border-left:2px solid var(--copper);background:rgba(208,131,79,.06);border-radius:0 8px 8px 0;max-width:68ch}
+.plain .mono{color:var(--copper);padding-top:3px}
+.plain p{color:var(--plaster)}
+.chamber.open .reveal>*{animation:rise .8s var(--ease) both;animation-delay:calc(.35s + var(--i,0) * .08s)}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}}
+.sec{display:grid;gap:18px}
+.sec>h3{font-size:clamp(1.6rem,3vw,2.3rem);text-transform:uppercase}
+.sec>p{color:var(--dust);max-width:64ch}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stat{background:var(--night);padding:18px 16px;display:grid;gap:4px;min-width:0}
+.stat b{font-family:var(--f-display);font-weight:800;font-size:clamp(2rem,4vw,3rem);line-height:1;color:var(--molten);font-variant-numeric:tabular-nums}
+.stat span{font-size:.82rem;color:var(--dust);line-height:1.35}
+.formula{display:grid;grid-template-columns:repeat(5,auto);align-items:center;justify-content:start;gap:12px 16px;font-family:var(--f-display);text-transform:uppercase}
+.formula .term{display:grid;gap:2px;padding:14px 16px;border:1px solid var(--line-strong);border-radius:8px;background:var(--soot)}
+.formula .term b{font-size:1.4rem;font-weight:800;letter-spacing:.02em}
+.formula .term i{font-style:normal;font-family:var(--f-mono);font-size:.66rem;letter-spacing:.14em;color:var(--copper)}
+.formula .op{font-size:2rem;color:var(--dust)}
+.libs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.lib{text-align:left;padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--soot);display:grid;gap:6px;transition:all .3s var(--ease);min-width:0}
+.lib:hover{border-color:var(--line-strong);transform:translateY(-2px)}
+.lib[aria-pressed="true"]{border-color:var(--copper);background:#251c17}
+.lib .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.lib b{font-family:var(--f-display);font-size:1.25rem;text-transform:uppercase;letter-spacing:.03em}
+.lib .n{font-family:var(--f-display);font-weight:800;font-size:1.8rem;color:var(--molten);font-variant-numeric:tabular-nums}
+.lib p{font-size:.82rem;color:var(--dust);line-height:1.35}
+.specimen{border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:#0d0a08}
+.specimen-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.72rem;color:var(--dust)}
+.specimen-head b{color:var(--molten);font-weight:500}
+.specimen pre{margin:0;padding:16px;overflow-x:auto;font-family:var(--f-mono);font-size:.76rem;line-height:1.6;color:#d8cfc2;white-space:pre-wrap;word-break:break-word}
+.specimen .k{color:var(--copper)}.specimen .s{color:#c9d8a8}.specimen .w{color:var(--molten);background:rgba(255,180,110,.08)}
+.specimen-foot{padding:10px 16px;border-top:1px solid var(--line);font-size:.82rem;color:var(--plaster);background:rgba(208,131,79,.07)}
+.twin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.panel{position:relative;margin:0;aspect-ratio:1/1.05;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:radial-gradient(circle at 50% 40%,#2a1d15,#0e0b09);display:grid;place-items:end center;padding:16px 16px 34px;max-width:100%}
+.panel img{max-height:100%;width:auto;object-fit:contain}
+.panel figcaption{position:absolute;left:10px;right:10px;bottom:8px;font-family:var(--f-mono);font-size:.64rem;color:var(--dust);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scanline::after{content:"";position:absolute;left:0;right:0;height:30%;top:-30%;background:linear-gradient(transparent,rgba(255,180,110,.18),transparent);animation:scanY 3.2s linear infinite}
+@keyframes scanY{to{top:100%}}
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:center}
+.duo>div{min-width:0}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.checks li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;color:var(--dust);font-size:.95rem}
+.checks li::before{content:"";width:10px;height:10px;margin-top:7px;border:1.5px solid var(--copper);transform:rotate(45deg)}
+.checks li b{color:var(--plaster);font-weight:600}
+.lineup{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;overflow-x:auto;padding:10px 4px 6px}
+.lineup figure{margin:0;display:grid;gap:6px;justify-items:center;flex:0 0 auto}
+.lineup img{height:120px;width:auto;filter:drop-shadow(0 8px 10px rgba(0,0,0,.6))}
+.lineup figcaption{font-family:var(--f-mono);font-size:.64rem;color:var(--dust);text-align:center}
+.crew{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;counter-reset:c}
+.crew div{padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--soot);display:grid;gap:6px;position:relative;min-width:0}
+.crew div::after{content:"→";position:absolute;right:-12px;top:50%;transform:translateY(-50%);color:var(--copper);z-index:1}
+.crew div:last-child::after{content:none}
+.crew b{font-family:var(--f-display);font-size:1.2rem;text-transform:uppercase}
+.crew p{font-size:.8rem;color:var(--dust);line-height:1.35}
+.tree{font-family:var(--f-mono);font-size:.76rem;line-height:1.75;padding:16px;border:1px solid var(--line);border-radius:8px;background:#0d0a08;overflow-x:auto;white-space:pre;color:#d8cfc2}
+.tree i{font-style:normal;color:var(--dust)}.tree b{color:var(--molten);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative;font-family:var(--f-mono);font-size:.74rem;padding:6px 11px;border:1px solid var(--line-strong);border-radius:99px;color:var(--plaster);background:var(--soot)}
+.chip[data-tip]:hover::after,.chip[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;left:0;bottom:calc(100% + 8px);width:max-content;max-width:260px;white-space:normal;font-family:var(--f-body);font-size:.8rem;line-height:1.35;background:var(--plaster);color:var(--night);padding:8px 10px;border-radius:6px;z-index:4;box-shadow:0 10px 20px rgba(0,0,0,.4)}
+/* pipeline */
+.pipe{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 22px}
+.node{position:relative;text-align:left;padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--soot);display:grid;gap:4px;transition:border-color .3s,background .3s,box-shadow .3s;min-width:0}
+.node::after{content:"";position:absolute;right:-17px;top:50%;width:12px;height:2px;background:var(--line-strong)}
+.node:nth-child(4n)::after,.node:last-child::after{content:none}
+.node .mono{color:var(--dust)}
+.node b{font-family:var(--f-display);font-size:1.12rem;text-transform:uppercase;letter-spacing:.02em;line-height:1.05}
+.node.lit{border-color:var(--c,var(--patina));box-shadow:0 0 0 1px var(--c,var(--patina)),0 0 22px -4px var(--c,var(--patina))}
+.node[aria-pressed="true"]{background:#1f2322}
+.theme-b .node[aria-pressed="true"]{background:#251c17}
+.node-detail{padding:18px;border:1px solid var(--line-strong);border-radius:8px;background:linear-gradient(135deg,rgba(99,203,182,.08),transparent 60%);display:grid;gap:8px;min-height:120px}
+.theme-b .node-detail{background:linear-gradient(135deg,rgba(208,131,79,.09),transparent 60%)}
+.node-detail h4{font-size:1.5rem;text-transform:uppercase}
+.node-detail p{color:var(--dust)}
+.theme-b .node-detail code{color:var(--molten)}
+.node-detail code{font-family:var(--f-mono);font-size:.78rem;color:var(--patina);word-break:break-all}
+/* replay */
+.replay{border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:#0c0f0e}
+.replay-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.72rem;color:var(--dust)}
+.replay-top b{color:var(--patina);font-weight:500}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:99px;overflow:hidden}
+.seg button{font-family:var(--f-mono);font-size:.7rem;padding:6px 12px;color:var(--dust)}
+.seg button[aria-pressed="true"]{background:var(--patina);color:#0c0f0e}
+.tl{position:relative;height:74px;margin:18px 16px 6px;border-radius:6px;background:#141a19;overflow:hidden}
+.tl canvas{position:absolute;inset:0;width:100%;height:100%}
+.tl .win{position:absolute;top:0;bottom:0;left:calc(43/105.4*100%);width:calc(10/105.4*100%);border:1.5px solid var(--patina);background:rgba(99,203,182,.16);opacity:0;transition:opacity .5s}
+.tl .head{position:absolute;top:0;bottom:0;width:2px;background:var(--plaster);left:0}
+.tl-axis{display:flex;justify-content:space-between;margin:0 16px;font-family:var(--f-mono);font-size:.62rem;color:var(--dust)}
+.steps{list-style:none;margin:14px 0 0;padding:0 16px 16px;display:grid;gap:8px}
+.steps li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;padding:10px 12px;border-radius:6px;border:1px solid transparent;color:rgba(236,228,216,.35);transition:all .45s}
+.steps li .k{font-family:var(--f-mono);font-size:.72rem;padding-top:2px}
+.steps li.on{color:var(--plaster);border-color:var(--line);background:#121716}
+.steps li.on .k{color:var(--patina)}
+.steps li small{display:block;color:var(--dust);font-size:.84rem;margin-top:2px}
+.steps .cands{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.steps .cand{font-family:var(--f-mono);font-size:.72rem;padding:4px 9px;border-radius:4px;border:1px dashed var(--line-strong);transition:all .4s}
+.steps .cand.win{border-style:solid;border-color:var(--patina);color:var(--patina);box-shadow:0 0 14px -2px var(--patina)}
+.verdict{font-family:var(--f-display);font-size:1.6rem;text-transform:uppercase;letter-spacing:.04em}
+.verdict.ok{color:var(--patina)}.verdict.unk{color:var(--molten)}
+.replay-foot{padding:10px 16px;border-top:1px solid var(--line);font-size:.8rem;color:var(--dust)}
+.play{font-family:var(--f-mono);font-size:.72rem;padding:6px 14px;border-radius:99px;background:var(--patina);color:#0c0f0e;font-weight:500}
+.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rule{padding:16px;border:1px solid var(--line);border-radius:8px;display:grid;gap:8px;align-content:start;min-width:0}
+.rule .mono{color:var(--c,var(--patina))}
+.rule b{font-family:var(--f-display);font-size:1.25rem;text-transform:uppercase;line-height:1.05}
+.rule p{font-size:.86rem;color:var(--dust)}
+.status{display:grid;gap:8px}
+.status div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:baseline;padding:10px 0;border-bottom:1px dashed var(--line)}
+.status .pill{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:99px;border:1px solid}
+.pill.done{color:var(--patina);border-color:var(--patina)}
+.pill.next{color:var(--molten);border-color:var(--molten)}
+.theme-b .pill.done{color:var(--copper);border-color:var(--copper)}
+/* bars */
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:90px minmax(0,1fr) 38px;gap:12px;align-items:center;font-size:.85rem}
+.bar .track{height:14px;background:var(--soot);border-radius:3px;overflow:hidden;display:flex}
+.bar .fill{height:100%;background:var(--copper);width:0;transition:width 1.1s var(--ease)}
+.bar .n{font-family:var(--f-mono);font-size:.78rem;text-align:right;color:var(--plaster);font-variant-numeric:tabular-nums}
+.bar .lab{color:var(--dust);text-transform:capitalize}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--f-mono);font-size:.7rem;color:var(--dust)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.c-map{background:var(--copper)}.c-con{background:var(--seal)}.c-unm{background:#5a4b41}
+/* review desk */
+.desk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.ann{position:relative;padding:18px;border:1px solid var(--line-strong);border-radius:8px;background:#0d0a08;font-family:var(--f-mono);font-size:.76rem;line-height:1.75;min-width:0}
+.ann .k{color:var(--dust)}
+.ann .state{display:inline-block;padding:2px 8px;border-radius:4px;background:var(--slab);color:var(--plaster);transition:all .4s}
+.ann .state[data-s="APPROVED"],.ann .state[data-s="EXPORTED"]{background:var(--copper);color:var(--night)}
+.ann .state[data-s="REJECTED"]{background:var(--seal);color:var(--night)}
+.ann .state[data-s="UNDER_REVIEW"]{background:var(--molten);color:var(--night)}
+.stamp{position:absolute;right:14px;top:14px;font-family:var(--f-display);font-weight:900;font-size:1.5rem;letter-spacing:.1em;padding:4px 10px;border:3px solid currentColor;border-radius:4px;transform:rotate(-12deg) scale(2);opacity:0;pointer-events:none}
+.stamp.hit{animation:stamp .5s var(--ease) forwards}
+@keyframes stamp{to{opacity:.9;transform:rotate(-12deg) scale(1)}}
+.desk-ctl{display:grid;gap:10px;min-width:0}
+.desk-ctl .btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font-family:var(--f-mono);font-size:.74rem;padding:8px 12px;border-radius:6px;border:1px solid var(--line-strong);color:var(--plaster);transition:all .25s}
+.btn:hover:not(:disabled){border-color:var(--copper);color:var(--molten)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn.primary{background:var(--copper);border-color:var(--copper);color:var(--night)}
+.btn.primary:hover:not(:disabled){background:var(--molten);color:var(--night)}
+.log{font-family:var(--f-mono);font-size:.72rem;color:var(--dust);border-left:1px solid var(--line-strong);padding-left:12px;display:grid;gap:4px;max-height:160px;overflow:auto}
+.log .err{color:var(--seal)}.log .ok{color:var(--molten)}
+.toggle{display:flex;gap:10px;align-items:center;font-size:.85rem;color:var(--dust)}
+.toggle input{accent-color:var(--copper);width:16px;height:16px}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--f-mono);font-size:.7rem}
+.flow span{padding:4px 8px;border-radius:4px;border:1px solid var(--line-strong);color:var(--dust);transition:all .4s}
+.flow span.cur{border-color:var(--molten);color:var(--night);background:var(--molten)}
+.flow em{font-style:normal;color:var(--line-strong)}
+.asklist{display:grid;gap:10px}
+.asklist div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:8px}
+.asklist .mono{color:var(--molten);padding-top:2px}
+.asklist p{color:var(--dust);font-size:.92rem}.asklist p b{color:var(--plaster)}
+.nextch{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:24px;border-top:1px solid var(--line)}
+.nextch button{font-family:var(--f-display);font-size:1.6rem;text-transform:uppercase;letter-spacing:.03em;color:var(--plaster);display:flex;gap:10px;align-items:center}
+.nextch button:hover{color:var(--molten)}
+.nextch small{display:block;font-family:var(--f-mono);font-size:.64rem;letter-spacing:.12em;color:var(--dust)}
+
+/* cursor */
+.cursor{position:fixed;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border:1.5px solid var(--molten);border-radius:50%;pointer-events:none;z-index:200;transition:width .25s,height .25s,margin .25s,background .25s,opacity .3s;mix-blend-mode:screen;opacity:0}
+.cursor.big{width:64px;height:64px;margin:-32px 0 0 -32px;background:rgba(255,180,110,.12)}
+@media (pointer:fine){.cursor{opacity:1}}
+
+/* ---------- responsive ---------- */
+@media (max-width:980px){
+  .ch-grid{grid-template-columns:minmax(0,1fr)}
+  .ch-side{position:relative;top:0}
+  .ch-side .figure{--h:min(40vh,320px)}
+  .pipe{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .node::after{content:none}
+  .line-track{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .line-track::before,.cast-token{display:none}
+  .phases{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:14px}
+  .stage-detail{grid-template-columns:minmax(0,1fr)}
+  .asks{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .exhibits{grid-template-columns:minmax(0,1fr);gap:56px}
+  .hall{min-height:auto}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .libs,.rules{grid-template-columns:minmax(0,1fr)}
+  .duo,.desk{grid-template-columns:minmax(0,1fr)}
+  .crew{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .crew div::after{content:none}
+  .formula{grid-template-columns:auto auto;}
+  .formula .op:nth-of-type(2){display:none}
+  .bench{min-height:560px}
+  .progress .txt{display:none}
+  .ch-nav .pn{display:none}
+}
+@media (max-width:460px){.pipe{grid-template-columns:minmax(0,1fr)}.phases{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
+  .pour{display:none}
+}
+</style>
+</head>
+<body>
+
+
+<!-- ============ CASTING INTRO ============ -->
+<div class="pour" id="pour" aria-hidden="true">
+  <button class="pour-skip" id="pourSkip" type="button">Skip intro</button>
+  <div class="pour-stage"><div class="pour-stream"></div><div class="pour-mold" id="pourMold"></div></div>
+  <div class="pour-copy"><span class="eyebrow">Stage 05 · Casting</span><h2>Pouring the demo…</h2></div>
+</div>
+
+<div class="cursor" id="cursor"></div>
+
+<header class="topbar">
+  <div class="brand"><span class="brand-mark"></span>Copper &amp; Code</div>
+  <div class="progress" aria-live="polite"><span class="txt" id="progTxt">0 of 3 chambers explored</span><span class="progress-dots"><i data-p="kb"></i><i data-p="a"></i><i data-p="b"></i></span></div>
+</header>
+
+<!-- ============ THE HALL ============ -->
+<main>
+<section class="hall" id="hall">
+  <div class="hall-bg"></div><div class="floor"></div><canvas id="embers"></canvas>
+  <div class="wrap hall-intro">
+    <span class="eyebrow">ZPRO Solutions · Factory Automation · progress preview, Sep 2026</span>
+    <h1>Teaching software to <em>make a statue</em></h1>
+    <p>A factory in Pune casts copper-finished statues by hand. We're capturing how it's done so a robot can one day do it. <b>Three pieces are on display. Each is one part of what we've built so far.</b> Click a statue to step inside.</p>
+  </div>
+  <div class="wrap exhibits">
+    <button class="exhibit" data-ch="kb" type="button" aria-label="Enter chamber I: The Foundation, the Manufacturing Bible">
+      <div class="beam"></div>
+      <div class="figure" style="--h:clamp(190px,28vh,290px);--d:0s">
+        <img class="ghost" src="assets/stl-bust-iso.webp" alt="">
+        <img class="statue" src="assets/statue-foundation.webp" alt="Copper-finished half bust of Sambhaji Maharaj, the pilot statue SM001">
+        <div class="sheen" style="--m:url(assets/statue-foundation.webp)"></div>
+      </div>
+      <div class="plinth"><span class="numeral">I</span><h2>The Foundation</h2><p>Manufacturing Bible<br>Repository &amp; Knowledge Base</p><span class="enter">Enter <i>→</i></span></div>
+    </button>
+    <button class="exhibit" data-ch="a" type="button" aria-label="Enter chamber II: The Sentinel, Project A">
+      <div class="beam"></div>
+      <div class="figure" style="--h:clamp(210px,31vh,320px);--d:-2s">
+        <div class="viewfinder"><span class="vf-rec"><b>●</b> REC · CAM-14</span><span class="vf-tag">observing · no guesses</span></div>
+        <img class="statue" src="assets/statue-sentinel.webp" alt="Copper-finished Two Talwar Mavla warrior statue, swords raised">
+        <div class="sheen" style="--m:url(assets/statue-sentinel.webp)"></div>
+      </div>
+      <div class="plinth"><span class="numeral">II</span><h2>The Sentinel</h2><p>Project A<br>Manufacturing Observation Platform</p><span class="enter">Enter <i>→</i></span></div>
+    </button>
+    <button class="exhibit" data-ch="b" type="button" aria-label="Enter chamber III: The Arbiter, Project B">
+      <div class="beam"></div>
+      <div class="figure" style="--h:clamp(230px,36vh,370px);--d:-4s">
+        <div class="tags"><span style="left:-38%;top:18%">ACT-022 · Pour</span><span style="right:-42%;top:40%">TOOL-004 · Bucket</span><span style="left:-30%;top:64%">05_Casting</span></div>
+        <img class="statue" src="assets/statue-arbiter.webp" alt="Copper-finished standing statue of Maharaj with Danpatta sword">
+        <div class="sheen" style="--m:url(assets/statue-arbiter.webp)"></div>
+      </div>
+      <div class="plinth"><span class="numeral">III</span><h2>The Arbiter</h2><p>Project B<br>Annotation &amp; AI Training Data</p><span class="enter">Enter <i>→</i></span></div>
+    </button>
+  </div>
+  <p class="hint">These are real statues from the factory catalogue · <b>hover</b> to see what each one does</p>
+</section>
+
+<!-- ============ STAGE LINE ============ -->
+<section class="band" id="craft">
+  <div class="wrap">
+    <div class="band-head">
+      <span class="eyebrow">The craft we're capturing</span>
+      <h2>Nine stages from STL file to finished statue</h2>
+      <p>Every statue in the catalogue goes down the same line. This sequence comes straight from our stage registry, and every step, tool and decision along it lives in the Knowledge Base. Tap a stage.</p>
+    </div>
+    <div class="line-track" id="lineTrack"><span class="cast-token" id="castToken"></span></div>
+    <div class="stage-detail" id="stageDetail" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- ============ TOOL BENCH ============ -->
+<section class="band" id="bench">
+  <div class="wrap">
+    <div class="band-head">
+      <span class="eyebrow">What we built it with</span>
+      <h2>Tools on the bench</h2>
+      <p>Real tools from the factory's Tools Library, photographed on the floor. Each one stands in for a piece of our software stack. Pick one up.</p>
+    </div>
+    <div class="bench" id="benchArea">
+      <span class="bench-note">Photos: Tools_Lib and Material_Lib assets, factory-automation-master</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ROADMAP ============ -->
+<section class="band" id="road">
+  <div class="wrap">
+    <div class="band-head">
+      <span class="eyebrow">Where we are</span>
+      <h2>Phase 2 of 8, and moving</h2>
+      <p>The full roadmap runs from a clean repository to a validated, robot-ready control system with a digital twin. The foundation is done. The data pipelines are being built now.</p>
+    </div>
+    <div class="phases" id="phases"></div>
+    <div class="asks">
+      <div class="ask"><span class="mono">Factory floor</span><h4>Close the knowledge gaps</h4><p>42 gaps are open (9 critical) and 17 of 46 process parameters are still unknown, like POP-to-water ratio and cure times. We need factory time to measure them.</p></div>
+      <div class="ask"><span class="mono">Cameras</span><h4>Point CCTV at the unseen steps</h4><p>Mold oiling, tap-and-vibrate de-airing and statue washing have never been filmed. We also need a decision on the production camera protocol.</p></div>
+      <div class="ask"><span class="mono">Cloud</span><h4>Turn on the real vision model</h4><p>The pipeline is proven with a deterministic mock. Validating it on Amazon Bedrock needs AWS access and a budget line.</p></div>
+      <div class="ask"><span class="mono">Computer vision</span><h4>Pick the action model</h4><p>Action recognition is a placeholder by design. We'd value expert input on local CV models versus vision-language models for Phase 3.</p></div>
+      <div class="ask"><span class="mono">Design</span><h4>Name the cut-apart pieces</h4><p>Some statues are cut from one master after casting, so one STL covers several visible parts. We need an agreed way to identify them.</p></div>
+      <div class="ask"><span class="mono">Robotics</span><h4>Choose the robot and the twin</h4><p>Phase 5 needs a target arm and a simulation stack. Blender is the default plan. If you have experience here, tell us.</p></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Built from three repositories: <span class="mono">factory-automation-master</span> · <span class="mono">Project-A</span> · <span class="mono">Project_B</span></span>
+    <span class="mono">Snapshot 30 Sep 2026 · figures are counted from the repos, not estimated</span>
+  </div>
+</footer>
+
+<!-- ============ CHAMBER I : KNOWLEDGE BASE ============ -->
+<section class="chamber" id="ch-kb" role="dialog" aria-modal="true" aria-labelledby="t-kb" aria-hidden="true">
+  <div class="ch-bar"><div class="who"><span class="numeral">I</span><b>The Foundation</b></div>
+    <div class="ch-nav"><button type="button" class="pn" data-go="b">← III</button><button type="button" class="pn" data-go="a">II →</button><button type="button" class="close" data-close>Back to hall ✕</button></div></div>
+  <div class="wrap ch-grid">
+    <aside class="ch-side">
+      <div class="figure"><div class="beam"></div><img class="statue" src="assets/statue-foundation.webp" alt="Sambhaji Maharaj half bust, SM001"></div>
+      <p class="caption">DA-001 · Sambhaji Maharaj Half Bust · our pilot variant SM001, the first statue we fully documented</p>
+    </aside>
+    <div class="ch-main reveal">
+      <div class="ch-title" style="--i:0"><h2 id="t-kb"><small>Chamber I · Repository &amp; Knowledge Base</small>The Manufacturing Bible</h2>
+        <p class="lede">Before a robot can make a statue, someone has to write down <em>how a statue is made</em>: every step, tool, material, judgment call and quality check. We turned a factory's phone videos, photos, STL files and one SOP into a structured knowledge base that software can read and people can check.</p></div>
+      <div class="plain" style="--i:1"><span class="mono">In short</span><p>Think of it as the factory's recipe book, written so precisely that a machine can follow it, and so honestly that it says “we don't know yet” wherever that's true.</p></div>
+
+      <div class="stats" style="--i:2">
+        <div class="stat"><b data-count="162">162</b><span>knowledge entries across six libraries</span></div>
+        <div class="stat"><b data-count="208">208</b><span>annotation files describing 58 videos and 146 photos</span></div>
+        <div class="stat"><b data-count="168">168</b><span>reference clips cut frame-accurately for AI to learn from</span></div>
+        <div class="stat"><b data-count="35">35</b><span>logged engineering decisions, each with its reason</span></div>
+      </div>
+
+      <div class="sec" style="--i:3">
+        <span class="eyebrow">The model</span>
+        <h3>Knowledge = Bible + SKU Profile + Geometry</h3>
+        <p>Most of statue-making is the same for every statue. What differs is small and specific. So we split knowledge three ways, which is how this scales from 2 statues to about 400 without rewriting anything.</p>
+        <div class="formula"><div class="term"><i>How</i><b>Bible</b></div><span class="op">+</span><div class="term"><i>What's different</i><b>SKU Profile</b></div><span class="op">+</span><div class="term"><i>Where</i><b>STL Geometry</b></div></div>
+      </div>
+
+      <div class="sec" style="--i:4">
+        <span class="eyebrow">Open the libraries</span>
+        <h3>Six libraries, one ID system</h3>
+        <p>Every entry has a stable ID like <span class="mono">ACT-022</span> that every other system points to. Pick a library to see a real entry.</p>
+        <div class="libs" id="libs"></div>
+        <div class="specimen" id="specimen"></div>
+      </div>
+
+      <div class="sec" style="--i:5">
+        <span class="eyebrow">Evidence before assumption</span>
+        <h3>Nothing is invented</h3>
+        <div class="duo">
+          <ul class="checks">
+            <li><span>Every fact is tagged <b>Observed</b>, <b>Founder validated</b> or <b>Unknown</b>. Of 42 actions, 24 are verified, 15 partial, 3 still need a factory visit.</span></li>
+            <li><span>What we don't know goes into a register instead of a guess: <b>42 knowledge gaps</b> and <b>46 process parameters</b> (11 verified, 18 partial, 17 unknown).</span></li>
+            <li><span>A founder validation session on 8 July 2026 confirmed answers, which were pushed back into every affected file.</span></li>
+            <li><span><b>JSON is the source of truth.</b> Markdown and CSV copies are generated by scripts so they can never drift.</span></li>
+          </ul>
+          <div class="asklist">
+            <div><span class="mono">KG-001</span><p><b>Critical.</b> Multi-component assembly: how mold sections and cast parts are joined, and when a joint passes.</p></div>
+            <div><span class="mono">MP-002</span><p><b>Unknown.</b> Shadu Mati-to-water mix ratio for the mold shell, stage 04.</p></div>
+            <div><span class="mono">MP-001</span><p><b>Verified.</b> Silicone mix ratio 20:1 base to catalyst by weight, founder validation 8 Jul 2026.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" style="--i:6">
+        <span class="eyebrow">From photo to geometry</span>
+        <h3>Every statue, also as data</h3>
+        <p>Seven statue designs are registered as Design Assets with their STL files. Scripts measure each one, fingerprint its shape, render standard views and map which designs share components. On the left, the pilot bust as photographed. On the right, the same statue as our scripts see it, rendered straight from its STL file.</p>
+        <div class="twin">
+          <figure class="panel"><img src="assets/statue-foundation.webp" alt="Catalogue photo of the SM001 bust"><figcaption>Catalogue photo · DA001_…_Copper_Front.jpg</figcaption></figure>
+          <figure class="panel scanline"><img src="assets/stl-bust-left.webp" alt="Point render generated from the bust's STL file"><figcaption>Generated from DA001_Shambhu_Raje_5inch.stl</figcaption></figure>
+        </div>
+        <div class="lineup">
+            <figure><img src="assets/statue-foundation.webp" alt=""><figcaption>DA-001</figcaption></figure>
+            <figure><img src="assets/da002.webp" alt=""><figcaption>DA-002</figcaption></figure>
+            <figure><img src="assets/da003.webp" alt=""><figcaption>DA-003</figcaption></figure>
+            <figure><img src="assets/statue-arbiter.webp" alt=""><figcaption>DA-004</figcaption></figure>
+            <figure><img src="assets/statue-sentinel.webp" alt=""><figcaption>DA-006</figcaption></figure>
+            <figure><img src="assets/da007.webp" alt=""><figcaption>DA-007</figcaption></figure>
+        </div>
+      </div>
+
+      <div class="sec" style="--i:7">
+        <span class="eyebrow">How we built it</span>
+        <h3>WE THINK SLOW AND BUILD FAST</h3>
+        <p>Two engineers run the project. Every task goes through the same loop, and every major decision is made by a person and written into the decision log.</p>
+        <div class="crew">
+          <div><span class="mono">1 · Plan</span><p>Sequence tasks and document everything</p></div>
+          <div><span class="mono">2 · Design</span><p>Architecture, pipelines, algorithm choices</p></div>
+          <div><span class="mono">3 · Build</span><p>Implement code, docs and repo updates</p></div>
+          <div><span class="mono">4 · Decide</span><p>Review, approve/fix and commit</p></div>
+        </div>
+      </div>
+
+      <div class="sec" style="--i:8">
+        <span class="eyebrow">For the engineers</span>
+        <h3>The repository</h3>
+<div class="tree"><b>factory-automation-master/</b>
+├─ 01_Documentation/   <i>architecture, contracts, registers, validation, reports</i>
+├─ 02_Project_Management/   <i>8-phase roadmap, checklists, Decision_Log.md</i>
+├─ 03_Standards/   <i>naming conventions, annotation rules, process spec</i>
+├─ 04_Factory_Data/
+│  ├─ Knowledge_Base/   <i>Action · Decision · Material · Process · Quality · Tools (JSON)</i>
+│  ├─ Knowledge_Bible_Library/   <i>168 reference clips + metadata.json provenance</i>
+│  ├─ Annotation/   <i>SM001 + SM002 video, image and STL annotations</i>
+│  ├─ Variant_Assets/   <i>DA-001 … DA-007: STL, catalogue, preview renders</i>
+│  └─ Metadata/   <i>stage, process, statue and design-asset registries</i>
+└─ _scripts/   <i>regenerate CSVs, indexes, fingerprints, similarity maps, renders</i></div>
+        <div class="chips">
+          <span class="chip" tabindex="0" data-tip="Every registry and library entry is a JSON file; Markdown and CSV are generated mirrors.">JSON registries</span>
+          <span class="chip" tabindex="0" data-tip="Scripts compute bounding boxes, sphericity and pose-invariant shape hashes from each STL.">Python · trimesh-style geometry</span>
+          <span class="chip" tabindex="0" data-tip="Reference clips are cut at the exact observed start and end of each action, no padding.">ffmpeg clip cutting</span>
+          <span class="chip" tabindex="0" data-tip="Project A reads the Knowledge Base at a pinned commit, so every result can be replayed against the exact knowledge it used.">Git as knowledge versioning</span>
+        </div>
+      </div>
+
+      <div class="nextch" style="--i:9"><button type="button" data-close><span><small>Back</small>The hall</span></button><button type="button" data-go="a"><span style="text-align:right"><small>Next chamber</small>II · The Sentinel</span> →</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAMBER II : PROJECT A ============ -->
+<section class="chamber" id="ch-a" role="dialog" aria-modal="true" aria-labelledby="t-a" aria-hidden="true">
+  <div class="ch-bar"><div class="who"><span class="numeral">II</span><b>The Sentinel</b></div>
+    <div class="ch-nav"><button type="button" class="pn" data-go="kb">← I</button><button type="button" class="pn" data-go="b">III →</button><button type="button" class="close" data-close>Back to hall ✕</button></div></div>
+  <div class="wrap ch-grid">
+    <aside class="ch-side">
+      <div class="figure"><div class="beam"></div><img class="statue" src="assets/statue-sentinel.webp" alt="Two Talwar Mavla warrior statue"></div>
+      <p class="caption">DA-006 · Two Talwar Mavla · stands guard over the factory floor, like Project A's cameras</p>
+    </aside>
+    <div class="ch-main reveal">
+      <div class="ch-title" style="--i:0"><h2 id="t-a"><small>Chamber II · Project A</small>The Observation Platform</h2>
+        <p class="lede">Project A is the factory's eyes. It records the CCTV, finds the moments where real work happens, and writes down <em>what it saw</em>, linked to the Bible, without ever guessing.</p></div>
+      <div class="plain" style="--i:1;border-color:var(--patina)"><span class="mono">In short</span><p>Hours of video go in. Short, labelled, traceable evidence clips come out, packed into a Manufacturing Observation Package that Project B can learn from.</p></div>
+
+      <div class="stats" style="--i:2">
+        <div class="stat"><b data-count="11">11</b><span>pipeline stages chained by one orchestrator</span></div>
+        <div class="stat"><b data-count="413">413</b><span>tests passing in the latest full run</span></div>
+        <div class="stat"><b data-count="6">6</b><span>storage layers, from immutable raw video up</span></div>
+        <div class="stat"><b data-count="16">16</b><span>recorded engineering decisions with rejected options</span></div>
+      </div>
+
+      <div class="sec" style="--i:3">
+        <span class="eyebrow">The pipeline</span>
+        <h3>From camera to evidence package</h3>
+        <p>Watch the signal travel. Click any stage to see what it does.</p>
+        <div class="pipe" id="pipeA"></div>
+        <div class="node-detail" id="pipeADetail" aria-live="polite"></div>
+      </div>
+
+      <div class="sec" style="--i:4">
+        <span class="eyebrow">Live demo · golden replay</span>
+        <h3>Replay a real finishing video</h3>
+        <p>This is the pipeline's reference test: a 105-second clip of a worker finishing a SM001 cast. Press play, then switch scenarios to see how the system reacts when the evidence is clear and when it isn't.</p>
+        <div class="replay">
+          <div class="replay-top"><span><b>sm001_finishing_01_support_removal.mp4</b> · 1080×1920 · 60 fps</span>
+            <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="seg" role="group" aria-label="Scenario"><button type="button" aria-pressed="true" data-sc="A">A · Clear evidence</button><button type="button" aria-pressed="false" data-sc="B">B · Ambiguous</button></span><button type="button" class="play" id="play">▶ Play</button></span></div>
+          <div class="tl" id="tl"><canvas id="tlc"></canvas><div class="win" id="win"></div><div class="head" id="head"></div></div>
+          <div class="tl-axis"><span>0 s</span><span>motion trace (illustrative)</span><span>105.4 s</span></div>
+          <ol class="steps" id="steps"></ol>
+          <p class="replay-foot">Observation text comes from a deterministic mock of the vision model, as in the recorded test. Real Bedrock validation is the next task.</p>
+        </div>
+      </div>
+
+      <div class="sec" style="--i:5">
+        <span class="eyebrow">Rules we hold ourselves to</span>
+        <h3>An honest “unknown” beats a confident wrong answer</h3>
+        <div class="rules">
+          <div class="rule"><span class="mono">Decision entry 4</span><b>Motion is not an action</b><p>We rejected using “lots of movement” as a stand-in for an action. A plausible wrong label in training data costs more than an empty field.</p></div>
+          <div class="rule"><span class="mono">Decision entry 14</span><b>The vision model only describes</b><p>It reports tool, material, motion and before/after. It is never asked to name an action ID.</p></div>
+          <div class="rule"><span class="mono">Decision entry 16</span><b>Evidence breaks ties</b><p>An action is picked only when visual evidence separates it from the other candidates by a clear margin.</p></div>
+        </div>
+      </div>
+
+      <div class="sec" style="--i:6">
+        <span class="eyebrow">For the engineers</span>
+        <h3>Under the hood</h3>
+        <p>Every external system sits behind an interface, so storage, knowledge source and models can be swapped without touching the pipeline. Every artifact lands at one predictable address:</p>
+        <div class="tree">{layer}/{variant_id}/{camera_id}/{session_id}/{filename}
+<b>raw</b>/SM001/CAM-14/07f892a7-…/07f892a7-….mp4   <i>immutable, checksummed</i>
+<b>observation_metadata</b>/…   <i>canonical IDs resolved against the Bible</i>
+<i>also: processed · generated · metadata · validation_reports</i></div>
+        <div class="chips">
+          <span class="chip" tabindex="0" data-tip="Python 3.10+, about 25,000 lines across ingestion, observation, services and shared contracts.">Python 3.10</span>
+          <span class="chip" tabindex="0" data-tip="Video reading, frame sampling, motion scoring and clip cutting.">OpenCV · ffmpeg</span>
+          <span class="chip" tabindex="0" data-tip="Evidence Repository behind a StorageProvider interface; only one module may import boto3.">AWS S3</span>
+          <span class="chip" tabindex="0" data-tip="Nova Lite describes clips; Titan and Nova multimodal models create text and visual embeddings.">Amazon Bedrock</span>
+          <span class="chip" tabindex="0" data-tip="A rebuildable search index over Action text and reference-clip visuals. Never a second source of truth.">PostgreSQL · pgvector</span>
+          <span class="chip" tabindex="0" data-tip="Unit tests mock everything; integration tests run real ffmpeg against a simulated RTSP camera with moto-faked S3.">pytest · moto</span>
+          <span class="chip" tabindex="0" data-tip="v1 extractor for development. The production camera protocol is still an open decision.">RTSP</span>
+        </div>
+      </div>
+
+      <div class="sec" style="--i:7">
+        <span class="eyebrow">Status</span>
+        <h3>Where Project A stands</h3>
+        <div class="status">
+          <div><span class="pill done">Done</span><span>Milestone 1: CCTV ingestion with reconnect, checksums, verified S3 upload and graceful shutdown</span></div>
+          <div><span class="pill done">Done</span><span>Milestone 2, phase 1: observation engine from video to structured activity timeline</span></div>
+          <div><span class="pill done">Done</span><span>Full chain to a Manufacturing Observation Package, proven on the SM001 golden replay</span></div>
+          <div><span class="pill done">Done</span><span>Visual search that finds Bible reference clips resembling a new clip (ranking only)</span></div>
+          <div><span class="pill next">Next</span><span>Real Bedrock vision validation, a real action-recognition model, live AWS deployment</span></div>
+        </div>
+      </div>
+      <div class="nextch" style="--i:8"><button type="button" data-go="kb"><span><small>Previous</small>← I · The Foundation</span></button><button type="button" data-go="b"><span style="text-align:right"><small>Next chamber</small>III · The Arbiter</span> →</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAMBER III : PROJECT B ============ -->
+<section class="chamber theme-b" id="ch-b" role="dialog" aria-modal="true" aria-labelledby="t-b" aria-hidden="true">
+  <div class="ch-bar"><div class="who"><span class="numeral">III</span><b>The Arbiter</b></div>
+    <div class="ch-nav"><button type="button" class="pn" data-go="a">← II</button><button type="button" class="pn" data-go="kb">I →</button><button type="button" class="close" data-close>Back to hall ✕</button></div></div>
+  <div class="wrap ch-grid">
+    <aside class="ch-side">
+      <div class="figure"><div class="beam"></div><img class="statue" src="assets/statue-arbiter.webp" alt="Maharaj with Danpatta statue"></div>
+      <p class="caption">DA-004 · Maharaj with Danpatta · judges what goes into the training set, like Project B's review desk</p>
+    </aside>
+    <div class="ch-main reveal">
+      <div class="ch-title" style="--i:0"><h2 id="t-b"><small>Chamber III · Project B</small>The Training Data Desk</h2>
+        <p class="lede">Project B is where observations become lessons. It takes what Project A saw and turns it into <em>reviewed training labels</em>, each one tied to a Bible ID and approved by a person before any model learns from it.</p></div>
+      <div class="plain" style="--i:1"><span class="mono">In short</span><p>A model is only as good as its labels. Project B checks every label against the Bible, flags anything that doesn't match, and keeps a human in charge of the final yes.</p></div>
+
+      <div class="stats" style="--i:2">
+        <div class="stat"><b data-count="180">180</b><span>confirmed label classes mirrored from the Bible</span></div>
+        <div class="stat"><b data-count="8">8</b><span>annotation types modelled, from actions to 3D pose</span></div>
+        <div class="stat"><b data-count="27">27</b><span>real SM001 annotation files checked end to end</span></div>
+        <div class="stat"><b data-count="89">89</b><span>test cases guarding the pipeline</span></div>
+      </div>
+
+      <div class="sec" style="--i:3">
+        <span class="eyebrow">The pipeline</span>
+        <h3>From package to approved label</h3>
+        <p>Click a stage.</p>
+        <div class="pipe" id="pipeB"></div>
+        <div class="node-detail" id="pipeBDetail" aria-live="polite"></div>
+      </div>
+
+      <div class="sec" style="--i:4">
+        <span class="eyebrow">Try the review desk</span>
+        <h3>Move a label through review</h3>
+        <p>This label comes from a real annotation of the casting pour video. Push it through the workflow. Then tick the box to try approving a label the Bible has never heard of.</p>
+        <div class="desk">
+          <div class="ann" id="ann"><span class="stamp" id="stamp">APPROVED</span></div>
+          <div class="desk-ctl">
+            <div class="flow" id="flow"><span data-f="CANDIDATE">Candidate</span><em>→</em><span data-f="UNDER_REVIEW">Under review</span><em>→</em><span data-f="APPROVED">Approved</span><em>→</em><span data-f="EXPORTED">Exported</span></div>
+            <div class="btns">
+              <button class="btn" id="bSubmit" type="button">Submit for review</button>
+              <button class="btn primary" id="bApprove" type="button">Approve</button>
+              <button class="btn" id="bReject" type="button">Reject</button>
+              <button class="btn" id="bExport" type="button">Export</button>
+              <button class="btn" id="bReset" type="button">Reset</button>
+            </div>
+            <label class="toggle"><input type="checkbox" id="bogus"> Use an unconfirmed label (<span class="mono">apply_adhesive</span>)</label>
+            <div class="log" id="log" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" style="--i:5">
+        <span class="eyebrow">The vocabulary</span>
+        <h3>180 labels in seven families</h3>
+        <p>The AI can only learn words the Bible defines. This is the full label vocabulary today.</p>
+        <div class="bars" id="ontoBars"></div>
+      </div>
+
+      <div class="sec" style="--i:6">
+        <span class="eyebrow">Tested on real data</span>
+        <h3>What the first real check found</h3>
+        <p>We ran 27 real SM001 annotation files through the checks on 29 September. The pipeline did its job: it caught naming drift that people had missed, like steps labelled <span class="mono">apply_adhesive</span> under the ID for “Install Temporary Paper Support”. Materials are mostly unmapped because early notes used free-text brand names.</p>
+        <div class="legend"><span><i class="c-map"></i>Mapped</span><span><i class="c-con"></i>Conflict</span><span><i class="c-unm"></i>Unmapped</span></div>
+        <div class="bars" id="valBars"></div>
+      </div>
+
+      <div class="sec" style="--i:7">
+        <span class="eyebrow">For the engineers</span>
+        <h3>Under the hood</h3>
+        <div class="chips">
+          <span class="chip" tabindex="0" data-tip="Session entities, eight annotation types and a ValueState wrapper for Unknown / Ambiguous / Not applicable.">Pydantic v2 models</span>
+          <span class="chip" tabindex="0" data-tip="Transitions return new objects and never mutate; approve() enforces the Knowledge Base gate.">Pure state machine</span>
+          <span class="chip" tabindex="0" data-tip="annotations/{session_id}/{annotation_id}.json plus append-only review, export and verification-flag logs.">JSON + JSONL audit logs</span>
+          <span class="chip" tabindex="0" data-tip="Tier 1 checks that IDs exist and are confirmed. Tier 2 (does the clip actually show it?) waits on Project A's visual matching.">Tier 1 verification</span>
+          <span class="chip" tabindex="0" data-tip="The factory repo is read-only to Project B; its path lives in one config file.">Read-only link to the Bible</span>
+        </div>
+      </div>
+
+      <div class="sec" style="--i:8">
+        <span class="eyebrow">Parked on purpose</span>
+        <h3>What Project B is waiting on</h3>
+        <div class="asklist">
+          <div><span class="mono">01</span><p><b>Component identity</b> for statues cut from one master after casting, where one STL covers several visible parts.</p></div>
+          <div><span class="mono">02</span><p><b>Tier 2 visual verification</b>, which needs Project A's embedding search to be reachable.</p></div>
+          <div><span class="mono">03</span><p><b>A formal knowledge-gap record</b>, designed once a real batch of unresolved labels exists.</p></div>
+          <div><span class="mono">04</span><p><b>Expected duration per action</b>, so unusually slow work, like a worn tool, can be flagged.</p></div>
+        </div>
+      </div>
+      <div class="nextch" style="--i:9"><button type="button" data-go="a"><span><small>Previous</small>← II · The Sentinel</span></button><button type="button" data-close><span style="text-align:right"><small>Done</small>Back to the hall</span> →</button></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(()=>{
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+/* ---------- intro pour ---------- */
+const pour=$('#pour'), mold=$('#pourMold');
+function endPour(){pour.classList.add('gone');setTimeout(()=>pour.remove(),1100)}
+if(reduce||store.get('cc-poured')){pour.remove()}else{
+  store.set('cc-poured','1');
+  let t0=null;
+  const step=t=>{if(!t0)t0=t;const p=Math.min(1,Math.max(0,(t-t0-350)/1700));mold.style.setProperty('--fill',(p*100).toFixed(1)+'%');if(p<1&&pour.isConnected)requestAnimationFrame(step);else setTimeout(endPour,450)};
+  requestAnimationFrame(step);
+  $('#pourSkip').onclick=endPour;
+}
+
+/* ---------- cursor ---------- */
+const cur=$('#cursor');let cx=-100,cy=-100,tx=-100,ty=-100;
+addEventListener('pointermove',e=>{tx=e.clientX;ty=e.clientY;cur.classList.toggle('big',!!e.target.closest('button,a,input,.chip'))});
+(function loop(){cx+=(tx-cx)*.22;cy+=(ty-cy)*.22;cur.style.transform=`translate(${cx}px,${cy}px)`;requestAnimationFrame(loop)})();
+
+/* ---------- hall: spotlight + tilt ---------- */
+const hall=$('#hall');
+hall.addEventListener('pointermove',e=>{
+  const r=hall.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+  hall.style.setProperty('--px',(x*100)+'%');hall.style.setProperty('--py',(y*100)+'%');
+  $$('.exhibits .figure').forEach(f=>{const fr=f.getBoundingClientRect();const dx=(e.clientX-(fr.left+fr.width/2))/r.width;f.style.setProperty('--tilt',(dx*-18).toFixed(2)+'deg')});
+});
+hall.addEventListener('pointerleave',()=>$$('.exhibits .figure').forEach(f=>f.style.setProperty('--tilt','0deg')));
+
+/* ---------- embers ---------- */
+const cv=$('#embers'),ctx=cv.getContext('2d');let W,H,parts=[],mouse={x:-999,y:-999};
+function size(){const d=Math.min(devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
+size();addEventListener('resize',size);
+hall.addEventListener('pointermove',e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top});
+const N=reduce?0:Math.round(Math.min(90,W/14));
+for(let i=0;i<N;i++)parts.push(spawn(true));
+function spawn(any){return{x:Math.random()*W,y:any?Math.random()*H:H+10,r:Math.random()*1.8+.4,vy:-(Math.random()*.5+.15),vx:(Math.random()-.5)*.2,life:Math.random()*.6+.4,ph:Math.random()*6.28}}
+function tick(){ctx.clearRect(0,0,W,H);for(const p of parts){p.ph+=.03;p.x+=p.vx+Math.sin(p.ph)*.25;p.y+=p.vy;const dx=p.x-mouse.x,dy=p.y-mouse.y,d=dx*dx+dy*dy;if(d<9000){p.x+=dx/Math.sqrt(d)*1.4;p.y+=dy/Math.sqrt(d)*1.4}
+ if(p.y<-10){Object.assign(p,spawn(false))}
+ const a=Math.max(0,Math.min(1,p.y/H))*p.life;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.28);ctx.fillStyle=`rgba(255,${150+p.r*30|0},90,${a})`;ctx.shadowColor='rgba(255,150,80,.9)';ctx.shadowBlur=8;ctx.fill()}
+ requestAnimationFrame(tick)}
+if(N)tick();
+
+/* ---------- stage line ---------- */
+const STAGES=[
+ ["01","Master 3D Print","Produce a physical master pattern from STL geometry as the molding reference",["STL master file","3D printer"],["Physical master pattern"],["Inspect Master Before Molding","Separate Master Components"]],
+ ["02","Paper Support","Stabilise and orient the master with temporary supports before the silicone mold is built",["Master pattern","Paper/cardboard shims"],["Master with temporary supports"],["Cut Paper Support","Install Temporary Paper Support"]],
+ ["03","Mold Creation","Build a flexible silicone “sock” mold, layer by layer, on the supported master",["Supported master","Liquid silicone"],["Flexible silicone sock mold"],["Apply Release Spray","Silicone Mixing","Apply Silicone Coating"]],
+ ["04","Mold Shell","Encase the silicone sock in a rigid POP and Shadu Mati shell",["Silicone sock mold","Plaster of Paris","Shadu Mati","Coconut fibre"],["Rigid protective shell"],["Mix Shadu Mati","Apply POP Shell","Embed Coconut Fibre"]],
+ ["05","Casting","Fill the mold with casting material, pushing it into fine detail and tapping out air",["Sock mold","Casting material"],["Cured cast in mold"],["Oil Mold Interior","Pour Casting Material","Push Casting Material","Tap Vibrate Mold"]],
+ ["06","Demolded","Remove the cured cast from the flexible silicone mold",["Cured cast in mold"],["Raw demolded cast"],["Demold Cast","Inspect Demolded Cast"]],
+ ["07","Finishing","Prepare the demolded surface for paint: trim flash, repair bubbles, sand",["Demolded cast"],["Surface-finished cast"],["Remove Flash and Support Material","Repair Bubble Defect","Sand Surface"]],
+ ["08","Black Paint","Apply the black base coat to the finished cast",["Finished cast","Black paint"],["Black-painted cast"],["Spray Paint (Black Base Coat)","Inspect Paint Coverage"]],
+ ["09","Copper Paint","Apply the copper finish that gives the statue its final look",["Black-painted cast","Copper paint"],["Completed statue"],["Apply Copper Paint","Final Inspection"]]
+];
+const track=$('#lineTrack'),token=$('#castToken'),sd=$('#stageDetail');
+STAGES.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.className='stage';b.setAttribute('aria-pressed','false');b.innerHTML=`<span class="mono">${s[0]}</span><b>${s[1]}</b>`;b.onclick=()=>pick(i);track.appendChild(b)});
+function pick(i){const s=STAGES[i];$$('.stage',track).forEach((b,j)=>b.setAttribute('aria-pressed',j===i));
+ const b=$$('.stage',track)[i];token.style.left=(b.offsetLeft+b.offsetWidth/2-14)+'px';
+ const hue=i<4?'radial-gradient(circle at 35% 30%,#fff,#e6ddd2 40%,#a9998a)':i<7?'radial-gradient(circle at 35% 30%,#fff3e0,var(--molten) 30%,var(--copper) 70%)':i===7?'radial-gradient(circle at 35% 30%,#666,#222 50%,#000)':'radial-gradient(circle at 35% 30%,#ffe0c0,#d0834f 40%,#6a3a1c)';token.style.background=hue;
+ sd.innerHTML=`<div><span class="kicker">Stage ${s[0]} of 09</span><h3>${s[1]}</h3><p>${s[2]}</p></div><div><span class="kicker">In → out</span><ul>${s[3].map(x=>`<li>${x}</li>`).join('')}</ul><ul style="margin-top:10px">${s[4].map(x=>`<li style="color:var(--molten)">${x}</li>`).join('')}</ul></div><div><span class="kicker">Example actions in the Bible</span><ul>${s[5].map(x=>`<li>${x}</li>`).join('')}</ul></div>`}
+pick(4);addEventListener('resize',()=>{const i=$$('.stage',track).findIndex(b=>b.getAttribute('aria-pressed')==='true');if(i>=0)pick(i)});
+
+/* ---------- tool bench ---------- */
+const TOOLS=[
+ {img:'tool-grinder',x:'4%',y:'10%',w:'min(38%,380px)',r:'-8deg',id:'TOOL-008 · Die Grinder',name:'ffmpeg + OpenCV',text:'On the floor it grinds away casting flash. In our code it grinds hours of CCTV down to sampled frames, motion timelines and short evidence clips.',stack:['4 s windows','frame stride 15','clip cutting']},
+ {img:'tool-mixer',x:'48%',y:'8%',w:'min(20%,190px)',r:'14deg',id:'TOOL-016 · PU Resin Paddle Mixer',name:'PostgreSQL + pgvector',text:'Mixes text embeddings of every action with visual embeddings of the reference clips into one searchable index. It can be rebuilt from the Bible at any time.',stack:['Titan text v2','Nova multimodal','rebuildable index']},
+ {img:'tool-flexshaft',x:'58%',y:'42%',w:'min(28%,280px)',r:'-6deg',id:'TOOL-008 · Flexible-shaft handpiece',name:'Amazon Bedrock · Nova Lite',text:'The attachment that reaches tight spots. A vision-language model describes a clip: tool, material, motion, before and after. It is not allowed to name the action.',stack:['describe, never decide','mock in tests','env-configured model']},
+ {img:'tool-brush',x:'40%',y:'30%',w:'min(7%,64px)',r:'78deg',id:'TOOL-015 · Paint Brush',name:'Pydantic models',text:'Every annotation gets the same coat: eight typed annotation models, validated when created, with explicit states for unknown and ambiguous values.',stack:['8 annotation types','ValueState','strict validation']},
+ {img:'tool-brushes',x:'20%',y:'38%',w:'min(5%,44px)',r:'-72deg',id:'TOOL-012 · Cleaning Brushes',name:'pytest + moto',text:'Keeps everything clean. Project A: 413 tests pass in the full run, with real ffmpeg against a simulated camera and fake S3. Project B: 89 test cases.',stack:['unit + integration','simulated RTSP','golden replay']},
+ {img:'tool-copper',x:'80%',y:'6%',w:'min(17%,160px)',r:'5deg',id:'MAT-018 · Copper Paint System',name:'Git + GitHub',text:'The final coat that makes it all presentable. The Bible lives in Git, JSON is authoritative, and Project A pins it to an exact commit so every result can be replayed.',stack:['3 repositories','pinned KB commit','decision log']}
+];
+const bench=$('#benchArea');let openTag=null;
+TOOLS.forEach((t,i)=>{const b=document.createElement('button');b.type='button';b.className='tool';b.style.cssText=`--x:${t.x};--y:${t.y};--w:${t.w};--r:${t.r}`;b.setAttribute('aria-expanded','false');b.setAttribute('aria-label',`${t.id}: ${t.name}`);b.innerHTML=`<img src="assets/${t.img}.webp" alt=""><span class="pip"></span>`;b.onclick=e=>{e.stopPropagation();showTag(i,b)};bench.appendChild(b)});
+function showTag(i,btn){closeTag();const t=TOOLS[i];const c=document.createElement('div');c.className='tag-card';c.setAttribute('role','dialog');
+ c.innerHTML=`<button class="tag-close" type="button" aria-label="Close">✕</button><span class="mono">${t.id}</span><h4>${t.name}</h4><p>${t.text}</p><div class="stack">${t.stack.map(s=>`<span>${s}</span>`).join('')}</div>`;
+ bench.appendChild(c);const br=bench.getBoundingClientRect(),r=btn.getBoundingClientRect();
+ let left=r.left-br.left+r.width*.4,top=r.top-br.top+r.height*.6;left=Math.max(16,Math.min(left,br.width-c.offsetWidth-16));top=Math.max(16,Math.min(top,br.height-c.offsetHeight-16));
+ c.style.left=left+'px';c.style.top=top+'px';btn.setAttribute('aria-expanded','true');openTag={c,btn};c.querySelector('.tag-close').onclick=closeTag;c.onclick=e=>e.stopPropagation()}
+function closeTag(){if(openTag){openTag.c.remove();openTag.btn.setAttribute('aria-expanded','false');openTag=null}}
+bench.addEventListener('click',closeTag);
+
+/* ---------- roadmap ---------- */
+const PH=[["0","Foundation","Repo architecture, standards, pilot SM001","done","Complete"],["1","Knowledge","The Manufacturing Bible and registers","done","Complete · Jul 10"],["2","Data pipelines","Project A observation, Project B annotation","now","In progress"],["3","Computer vision","Recognise actions, tools and parts on video","later","Next"],["4","Intelligence","Learn the full process and its decisions","later","Planned"],["5","Digital twin","Simulate and validate plans, Blender first","later","Planned"],["6","Control system","Pick variant, set quantity, track progress, upload STL","later","Planned"],["7","Scale","From 2 variants to about 400","later","Planned"],["8","Deploy","Validation and robot-ready handover","later","Planned"]];
+$('#phases').innerHTML=PH.map(p=>`<div class="phase" data-s="${p[3]}"><span class="mono">Phase ${p[0]}</span><b>${p[1]}</b><p>${p[2]}</p><span class="st">${p[4]}</span></div>`).join('');
+
+/* ---------- chambers ---------- */
+const CH={kb:'#ch-kb',a:'#ch-a',b:'#ch-b'};let current=null,lastFocus=null;
+const seen=new Set((store.get('cc-seen')||'').split(',').filter(Boolean));
+[...seen].forEach(k=>{if(!CH[k])seen.delete(k)});
+function syncSeen(){$$('.progress-dots i').forEach(i=>i.classList.toggle('on',seen.has(i.dataset.p)));$('#progTxt').textContent=seen.size===3?'All 3 chambers explored':`${seen.size} of 3 chambers explored`;$$('.exhibit').forEach(e=>e.classList.toggle('seen',seen.has(e.dataset.ch)))}
+function markSeen(id){seen.add(id);store.set('cc-seen',[...seen].join(','));syncSeen()}
+syncSeen();
+function open(id,x,y){const el=$(CH[id]);if(!el)return;
+ if(current&&current!==el){current.classList.remove('open');current.setAttribute('aria-hidden','true');current.style.visibility='hidden'}
+ el.style.setProperty('--cx',(x??innerWidth/2)+'px');el.style.setProperty('--cy',(y??innerHeight/2)+'px');
+ el.style.visibility='';el.scrollTop=0;el.setAttribute('aria-hidden','false');
+ requestAnimationFrame(()=>el.classList.add('open'));current=el;document.body.classList.add('locked');
+ markSeen(id);countUp(el);onOpen(id);
+ try{history.replaceState(null,'','#'+({kb:'foundation',a:'project-a',b:'project-b'}[id]))}catch(e){}
+ setTimeout(()=>{const c=el.querySelector('.close');c&&c.focus({preventScroll:true})},500)}
+function close(){if(!current)return;const el=current;el.classList.add('closing');el.classList.remove('open');el.setAttribute('aria-hidden','true');
+ setTimeout(()=>{el.classList.remove('closing');el.style.visibility='hidden'},650);current=null;document.body.classList.remove('locked');
+ try{history.replaceState(null,'',location.pathname+location.search)}catch(e){} lastFocus&&lastFocus.focus({preventScroll:true})}
+$$('.exhibit').forEach(b=>b.addEventListener('click',e=>{lastFocus=b;const r=b.querySelector('.figure').getBoundingClientRect();open(b.dataset.ch,r.left+r.width/2,r.top+r.height/2)}));
+document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){open(g.dataset.go,e.clientX,e.clientY)}if(e.target.closest('[data-close]'))close()});
+addEventListener('keydown',e=>{if(e.key==='Escape'){if(openTag)closeTag();else close()}});
+const HASH={foundation:'kb','project-a':'a','project-b':'b'};if(HASH[location.hash.slice(1)])setTimeout(()=>open(HASH[location.hash.slice(1)]),reduce||!pour.isConnected?50:2600);
+
+function countUp(el){$$('[data-count]',el).forEach(n=>{const end=+n.dataset.count;if(reduce){n.textContent=end;return}const t0=performance.now()+400,d=1300;
+ const f=t=>{const p=Math.min(1,Math.max(0,(t-t0)/d));n.textContent=Math.round(end*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)})}
+
+/* ---------- chamber I: libraries ---------- */
+const LIBS=[
+ {k:'Action',n:42,d:'Physical steps a worker performs',id:'ACT-020',file:'Action_Lib/ACT-020_oil_mold_interior.json',
+  json:[['action_id','"ACT-020"'],['action_name','"Oil Mold Interior"'],['evidence_confidence','"Factory Validation Required"'],['purpose','"Create a thin release-oil layer on the mold\'s interior cavity surface, immediately before each casting cycle, so the cured cast separates cleanly."'],['observable_cues','[{ "cue": "NOT YET AVAILABLE — no video or image evidence of this subprocess exists", "classification": "Question" }]']],warn:'observable_cues',foot:'The factory owner confirmed this step exists, but nobody has filmed it. So the entry says so, and invents no visual cues.'},
+ {k:'Decision',n:48,d:'Judgment calls a skilled worker makes',id:'DEC-025',file:'Decision_Lib/DEC-025_assess_manual_push_and_tap_adequacy.json',
+  json:[['decision_id','"DEC-025"'],['decision_name','"Assess Manual Push and Tap Adequacy"'],['primary_manufacturing_stage','"05_Casting"'],['manufacturing_reasoning','"Inadequate push risks unfilled kalgi, necklace beads, or ear cavities; inadequate tap risks trapped air at mold base."']],warn:'manufacturing_reasoning',foot:'Robots need the “why”, not just the “what”. Decisions capture what an expert is weighing at each moment.'},
+ {k:'Quality',n:28,d:'What “good” looks like at each stage',id:'QUAL-015',file:'Quality_Lib/QUAL-015_fine_facial_and_jewelry_detail_successfully_cast.json',
+  json:[['quality_id','"QUAL-015"'],['quality_name','"Fine Facial and Jewelry Detail Successfully Cast"'],['manufacturing_stage','"06_Demolded"'],['inspection_objective','"Verify fine facial and jewelry detail … by qualitative comparison to the authoritative STL/3D geometry reference."']],warn:'inspection_objective',foot:'Quality checks point back at the STL, so the same check works for any of the 400 future statues.'},
+ {k:'Material',n:19,d:'Silicone, resins, POP, paints and more',id:'MAT-010',file:'Material_Lib/MAT-010_mold_release_oil.json',
+  json:[['material_id','"MAT-010"'],['material_name','"Mold Release Oil"'],['canonical_tokens','["mold_release_oil", "casting_release_oil"]'],['manufacturer','"Brand, manufacturer, product type/grade, and SKU are Unknown — Requires Factory Validation."']],warn:'manufacturer',foot:'Unknown is a valid answer. Guessing a brand from a photo is not.'},
+ {k:'Tools',n:16,d:'Every tool seen on camera',id:'TOOL-008',file:'Tools_Lib/TOOL-008_die_grinder.json',
+  json:[['tool_id','"TOOL-008"'],['tool_name','"Die Grinder"'],['manufacturing_stage','"07_Finishing"'],['recognition_relevance','"… Colour and brand are not identifying characteristics; any powered die grinder unit performing this function is classified as TOOL-008."']],warn:'recognition_relevance',foot:'Written for a future vision model: classify by what the tool does, not what colour it is.'},
+ {k:'Process',n:9,d:'The stage-level workflows',id:'PROC-005',file:'Process_Lib/PROC-005_manual_casting.json',
+  json:[['process_id','"PROC-005"'],['process_name','"Manual Casting"'],['applicable_variants','["SM001", "SM002"]'],['overview','"Fill the shell-enclosed flexible silicone sock mold with casting material using manual pour, push, and tap/vibrate de-airing."']],warn:'applicable_variants',foot:'Each entry says which statues it has actually been observed on, so we know what generalises.'}
+];
+const libs=$('#libs'),spec=$('#specimen');
+LIBS.forEach((l,i)=>{const b=document.createElement('button');b.type='button';b.className='lib';b.setAttribute('aria-pressed','false');b.innerHTML=`<div class="row"><b>${l.k}</b><span class="n">${l.n}</span></div><p>${l.d}</p>`;b.onclick=()=>showLib(i);libs.appendChild(b)});
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function showLib(i){const l=LIBS[i];$$('.lib',libs).forEach((b,j)=>b.setAttribute('aria-pressed',j===i));
+ spec.innerHTML=`<div class="specimen-head"><span>04_Factory_Data/Knowledge_Base/<b>${l.file}</b></span><span>excerpt</span></div><pre>{\n${l.json.map(([k,v])=>`  <span class="${k===l.warn?'w':''}"><span class="k">"${k}"</span>: <span class="s">${esc(v)}</span></span>`).join(',\n')}\n}</pre><div class="specimen-foot">${l.foot}</div>`}
+showLib(0);
+
+
+/* ---------- pipelines ---------- */
+const PA=[
+ ['CCTV camera','Camera config lives in YAML. An RTSP extractor records fixed-length segments for each camera, with automatic reconnect.','config/cameras.yaml → CAM-14 · SM001'],
+ ['Evidence repository','Each segment is checksummed (SHA-256), uploaded to the immutable raw layer, verified, and only then deleted locally. Nothing is silently lost.','raw/SM001/CAM-14/{session}/{recording}.mp4'],
+ ['Observation engine','Reads the video, samples frames in 4-second windows and turns motion into a smoothed activity timeline.','observe_video() → Timeline'],
+ ['Metadata resolution','Resolvers look up variant, stage, process, tool and material against the Bible. Anything unmatched stays Unknown.','KnowledgeBaseProvider · pinned commit'],
+ ['Cleaning','Rule-based cleaning works on the timeline, not raw pixels, and records what it removed and why.','cleaning_report.json'],
+ ['Evidence gate','A cheap check asks “is anything meaningful happening?” and picks the best evidence window before any expensive model runs.','HIGH_MOTION 43–53 s'],
+ ['Clip generation','ffmpeg cuts the evidence clip. File names are derived from metadata and are never used as identifiers.','generated/…/clip.mp4'],
+ ['Vision observation','Amazon Nova Lite watches the clip and describes tool, material, motion and before/after in plain language.','StructuredObservation'],
+ ['Canonical context','Tool and material words are matched to Bible IDs, but only when the match is unique.','“Die grinder” → TOOL ID'],
+ ['Action resolver','Narrows candidate actions using Bible relationships, then picks one only if visual evidence separates them clearly.','IDENTIFIED | UNKNOWN'],
+ ['Observation package','Everything above, bundled with provenance and the knowledge version it used, published for Project B.','Manufacturing Observation Package (MOP)']
+];
+const PB=[
+ ['Receive package','Only published packages are accepted. A package in any other lifecycle state is refused.','lifecycle_state ∈ published · consumed · enriched · validated'],
+ ['Parse the session','The package becomes typed session objects: session, stage, process and action segments, frames.','ingest_mop() → ManufacturingSession'],
+ ['Tier 1 verification','Every ID is checked against the 180-label vocabulary and the design-asset registry. Failures are downgraded to Unknown and flagged, never dropped.','verify_resolution() → flags[]'],
+ ['Generate labels','Action labels plus stage, process, tool and material classifications are created from verified segments.','ActionLabel · StaticClassification'],
+ ['Human review','A reviewer approves, rejects or returns each label. Approval is blocked if the label is not a confirmed Bible entry.','approve() · §8.1 KB gate'],
+ ['Export','Approved labels are marked exported with an append-only log, ready for dataset packaging.','_export_log.jsonl'],
+ ['Correction trail','A correction creates a new human record linked to the original, so history is never overwritten.','corrected_from_annotation_id'],
+ ['Dataset release','Versioned training sets for the Phase 3 vision models. Next up.','dataset_versions/ (planned)']
+];
+function buildPipe(root,det,data,color){root.innerHTML='';data.forEach((d,i)=>{const b=document.createElement('button');b.type='button';b.className='node';b.style.setProperty('--c',color);b.setAttribute('aria-pressed','false');b.innerHTML=`<span class="mono">${String(i+1).padStart(2,'0')}</span><b>${d[0]}</b>`;b.onclick=()=>{sel(i);stop()};root.appendChild(b)});
+ const nodes=$$('.node',root);let k=0,timer=null;
+ function sel(i){nodes.forEach((n,j)=>n.setAttribute('aria-pressed',j===i));const d=data[i];det.innerHTML=`<span class="mono" style="color:var(--dust)">Stage ${i+1} of ${data.length}</span><h4>${d[0]}</h4><p>${d[1]}</p><code>${d[2]}</code>`}
+ function run(){stop();timer=setInterval(()=>{nodes.forEach(n=>n.classList.remove('lit'));nodes[k%nodes.length].classList.add('lit');k++},reduce?1e9:520)}
+ function stop(){clearInterval(timer)}
+ sel(0);return{run,stop}}
+const pipeA=buildPipe($('#pipeA'),$('#pipeADetail'),PA,'var(--patina)');
+const pipeB=buildPipe($('#pipeB'),$('#pipeBDetail'),PB,'var(--copper)');
+
+/* ---------- golden replay ---------- */
+const tlc=$('#tlc'),tctx=tlc.getContext('2d'),headEl=$('#head'),win=$('#win'),stepsEl=$('#steps');let scen='A',playing=false,raf=0;
+const trace=[];for(let i=0;i<=210;i++){const t=i/210*105.4;let v=.12+.08*Math.sin(i*.7)+.06*Math.sin(i*1.9);if(t>41&&t<55)v=.72+.2*Math.sin(i*.9);else if(t>20&&t<30)v=.35+.1*Math.sin(i);else if(t>70&&t<85)v=.3+.08*Math.sin(i*1.3);trace.push(Math.max(.04,Math.min(1,v)))}
+function drawTrace(p){const w=tlc.clientWidth,h=tlc.clientHeight,d=Math.min(devicePixelRatio||1,2);tlc.width=w*d;tlc.height=h*d;tctx.setTransform(d,0,0,d,0,0);tctx.clearRect(0,0,w,h);
+ const bw=w/trace.length;trace.forEach((v,i)=>{const x=i*bw,on=i/trace.length<=p;tctx.fillStyle=on?(v>.6?'#63cbb6':'rgba(99,203,182,.45)'):'rgba(236,228,216,.12)';const bh=v*(h-10);tctx.fillRect(x,h-bh-4,Math.max(1,bw-1),bh)})}
+drawTrace(0);addEventListener('resize',()=>drawTrace(playing?0:1));
+const SC={
+ A:{obs:'Operator uses a die grinder on the casting surface. Before: raised flash or support remnants on the part edge.',verdict:['ok','Identified · Remove Flash and Support Material'],why:'The before-state (raised flash) matches only one candidate, so the resolver can separate them.',win:0},
+ B:{obs:'The tool contacts and moves along the workpiece surface. Before / after: not visible.',verdict:['unk','Unknown · both candidates kept'],why:'Nothing in the evidence tells the two actions apart, so the system says so and keeps both for a human.',win:-1}
+};
+function renderSteps(){const s=SC[scen];stepsEl.innerHTML=[
+ ['01','Evidence gate','Meaningful activity found. Idle stretches are ignored.'],
+ ['02','Evidence window','43.0 s – 53.0 s selected, labelled HIGH_MOTION.'],
+ ['03','Vision observation (mock)',s.obs],
+ ['04','Canonical context','Die Grinder → tool ID · Cured casting resin → material ID. Both matched uniquely.'],
+ ['05','Candidate actions',`<div class="cands"><span class="cand" data-c="0">Remove Flash and Support Material</span><span class="cand" data-c="1">Grind Surface</span></div>`],
+ ['06','Resolution',`<span class="verdict ${s.verdict[0]}">${s.verdict[1]}</span><small>${s.why}</small>`]
+ ].map(([k,t,d])=>`<li><span class="k">${k}</span><div>${t}<small>${d}</small></div></li>`).join('')}
+function setStep(n){$$('li',stepsEl).forEach((l,i)=>l.classList.toggle('on',i<n));win.style.opacity=n>=2?1:0;const c=$$('.cand',stepsEl);c.forEach(x=>x.classList.remove('win'));if(n>=6&&SC[scen].win>=0)c[SC[scen].win].classList.add('win')}
+renderSteps();setStep(6);headEl.style.left='100%';drawTrace(1);
+function play(){cancelAnimationFrame(raf);renderSteps();setStep(0);playing=true;const t0=performance.now(),D=reduce?1:4200;
+ const f=t=>{const p=Math.min(1,(t-t0)/D);headEl.style.left=(p*100)+'%';drawTrace(p);setStep(p>.25?(p>.5?(p>.62?(p>.72?(p>.84?(p>.96?6:5):4):3):2):1):0);if(p<1)raf=requestAnimationFrame(f);else{playing=false;setStep(6)}};raf=requestAnimationFrame(f)}
+$('#play').onclick=play;
+$$('[data-sc]').forEach(b=>b.onclick=()=>{scen=b.dataset.sc;$$('[data-sc]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(playing){play()}else{renderSteps();setStep(6)}});
+
+/* ---------- review desk ---------- */
+const ann=$('#ann'),log=$('#log'),stamp=$('#stamp');let st;
+function annHTML(){const lab=$('#bogus').checked?'"apply_adhesive"':'"ACT-022"';return`<span class="stamp" id="stamp"></span><span class="k">annotation_id</span>: "ANN-00000042"  <span class="k">// example id</span>
+<span class="k">type</span>: ActionLabelAnnotation
+<span class="k">label_class_id</span>: ${lab}
+<span class="k">display</span>: ${$('#bogus').checked?'(not in the Bible)':'"Pour Casting Material"'}
+<span class="k">source</span>: sm001_casting_02_pouring.mp4
+<span class="k">stage</span>: 05_Casting · <span class="k">duration</span>: 40.8 s
+<span class="k">provenance</span>: auto-generated
+<span class="k">state</span>: <span class="state" data-s="${st}">${st}</span>`.replace(/\n/g,'<br>')}
+function paint(stampTxt,cls){ann.innerHTML=annHTML();$$('#flow span').forEach(s=>s.classList.toggle('cur',s.dataset.f===st||(st==='REJECTED'&&s.dataset.f==='UNDER_REVIEW')));
+ $('#bSubmit').disabled=st!=='CANDIDATE';$('#bApprove').disabled=st!=='UNDER_REVIEW';$('#bReject').disabled=st!=='UNDER_REVIEW';$('#bExport').disabled=st!=='APPROVED';
+ if(stampTxt){const s=$('#stamp');s.textContent=stampTxt;s.style.color=cls;requestAnimationFrame(()=>s.classList.add('hit'))}}
+function say(t,c){const d=document.createElement('div');d.className=c||'';d.textContent=t;log.prepend(d)}
+function reset(){st='CANDIDATE';log.innerHTML='';say('created by annotation_generation.py → CANDIDATE');paint()}
+$('#bSubmit').onclick=()=>{st='UNDER_REVIEW';say('submit_for_review() → UNDER_REVIEW');paint()};
+$('#bApprove').onclick=()=>{if($('#bogus').checked){say('ValueError: ANN-00000042 has unconfirmed label_class_id "apply_adhesive". Approval blocked by the Knowledge Base gate.','err');paint('BLOCKED','var(--seal)');return}st='APPROVED';say('approve(reviewer) → APPROVED · KB gate passed for ACT-022','ok');paint('APPROVED','var(--molten)')};
+$('#bReject').onclick=()=>{st='REJECTED';say('reject(reviewer, reason) → REJECTED · logged to _review_log.jsonl');paint('REJECTED','var(--seal)')};
+$('#bExport').onclick=()=>{st='EXPORTED';say('mark_exported() → EXPORTED · appended to _export_log.jsonl','ok');paint('EXPORTED','var(--copper)')};
+$('#bReset').onclick=reset;$('#bogus').onchange=reset;reset();
+
+/* ---------- bars ---------- */
+const ONTO=[['decision',48],['action',42],['quality',28],['material',19],['process',18],['tool',16],['stage',9]];
+$('#ontoBars').innerHTML=ONTO.map(([k,v])=>`<div class="bar"><span class="lab">${k}</span><span class="track"><span class="fill" data-w="${v/48*100}"></span></span><span class="n">${v}</span></div>`).join('');
+const VAL=[['action',46,32,5],['stage',27,0,0],['material',10,0,35],['tool',5,0,12]];const vmax=83;
+$('#valBars').innerHTML=VAL.map(([k,m,c,u])=>`<div class="bar"><span class="lab">${k}</span><span class="track"><span class="fill" data-w="${m/vmax*100}"></span><span class="fill" style="background:var(--seal)" data-w="${c/vmax*100}"></span><span class="fill" style="background:#5a4b41" data-w="${u/vmax*100}"></span></span><span class="n">${m+c+u}</span></div>`).join('');
+function grow(root){$$('.fill',root).forEach(f=>{f.style.width='0';setTimeout(()=>f.style.width=f.dataset.w+'%',reduce?0:700)})}
+
+function onOpen(id){pipeA.stop();pipeB.stop();if(id==='a'){pipeA.run();if(!playing)setTimeout(play,reduce?0:1200)}if(id==='b'){pipeB.run();grow($('#ch-b'))}}
+})();
+</script>
+
+</body>
+</html>
